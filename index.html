@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SGD Mobile+ | Inventario de Archivador</title>
+    <title>Registro de Expedientes</title>
     <style>
         :root {
             --essalud-blue: #003366;
@@ -24,6 +24,9 @@
             padding: 20px;
             text-align: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
         .header h1 { margin: 0; font-size: 1.5rem; }
         .header p { margin: 5px 0 0 0; color: var(--essalud-cyan); font-weight: bold; }
@@ -34,45 +37,57 @@
         }
         .search-box {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 10px;
             border: 2px solid #ccc;
             border-radius: 8px;
             font-size: 1rem;
             box-sizing: border-box;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+        .search-box:focus { border-color: var(--essalud-cyan); outline: none; }
+        
+        .contador-caja {
+            text-align: right;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
         .document-card {
             background: white;
             padding: 15px;
             margin-bottom: 10px;
             border-left: 5px solid var(--essalud-cyan);
-            border-radius: 4px;
+            border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .doc-code { font-weight: bold; font-size: 1.1rem; }
+        .doc-code { font-weight: bold; font-size: 1.1rem; color: var(--essalud-blue); }
         .status-badge {
             background-color: #E8F5E9;
             color: #2E7D32;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
             font-size: 0.8rem;
             font-weight: bold;
         }
-        .empty-state { text-align: center; color: #777; margin-top: 40px; }
+        .empty-state { text-align: center; color: #777; margin-top: 40px; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>SGD Mobile+</h1>
+        <h1>Registro de Expedientes</h1>
         <p id="titulo-archivador">Cargando archivador...</p>
     </div>
 
     <div class="container">
         <input type="text" id="buscador" class="search-box" placeholder="Buscar expediente por código..." onkeyup="filtrarLista()">
+        <div id="contador" class="contador-caja">Calculando expedientes...</div>
         
         <div id="lista-documentos">
             <!-- La lista inmediata se inyectará aquí -->
@@ -80,42 +95,46 @@
     </div>
 
     <script>
-        // 1. Base de datos consolidada (SSOT)
-        const baseDocumentos = [
-          {"codigo": "EXP-OFC-2020-001", "tipo": "Oficio"},
-          {"codigo": "EXP-OFC-2020-002", "tipo": "Oficio"},
-          {"codigo": "EXP-OFC-2020-003", "tipo": "Oficio"},
-          {"codigo": "EXP-CAR-2020-001", "tipo": "Carta"},
-          {"codigo": "EXP-CAR-2020-002", "tipo": "Carta"},
-          {"codigo": "EXP-CAR-2020-003", "tipo": "Carta"},
-          {"codigo": "EXP-NOT-2020-001", "tipo": "Nota"},
-          {"codigo": "EXP-NOT-2020-002", "tipo": "Nota"},
-          {"codigo": "EXP-NOT-2020-003", "tipo": "Nota"},
-          {"codigo": "EXP-MEM-2020-001", "tipo": "Memorando"},
-          {"codigo": "EXP-MEM-2020-002", "tipo": "Memorando"},
-          {"codigo": "EXP-MEM-2020-003", "tipo": "Memorando"},
-          {"codigo": "EXP-PRO-2020-001", "tipo": "Proveido"},
-          {"codigo": "EXP-PRO-2020-002", "tipo": "Proveido"},
-          {"codigo": "EXP-PRO-2020-003", "tipo": "Proveido"}
-        ];
+        // 1. ALGORITMO GENERADOR DE LA BASE DE DATOS (875 Registros)
+        const categorias = {
+            "Oficio": "OFC",
+            "Carta": "CAR",
+            "Nota": "NOT",
+            "Memorando": "MEM",
+            "Proveido": "PRO"
+        };
+        const añosHistorial = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+        let baseDocumentos = [];
 
-        // 2. Capturar el parámetro de la URL
+        // Generamos los expedientes dinámicamente manteniendo la página ultraligera
+        for (const [tipoDocumento, sigla] of Object.entries(categorias)) {
+            añosHistorial.forEach(año => {
+                for (let i = 1; i <= 25; i++) {
+                    let correlativo = i.toString().padStart(3, '0'); // Convierte 1 en "001"
+                    let codigoExacto = `EXP-${sigla}-${año}-${correlativo}`;
+                    baseDocumentos.push({ codigo: codigoExacto, tipo: tipoDocumento });
+                }
+            });
+        }
+
+        // 2. LÓGICA DE INTERFAZ Y FILTRADO
         const parametros = new URLSearchParams(window.location.search);
         const tipoBuscado = parametros.get('tipo');
 
-        // 3. Renderizar la interfaz
         const contenedorLista = document.getElementById('lista-documentos');
         const tituloArchivador = document.getElementById('titulo-archivador');
+        const cajaContador = document.getElementById('contador');
 
-        if (tipoBuscado) {
+        if (tipoBuscado && categorias[tipoBuscado]) {
             tituloArchivador.textContent = `Archivador: ${tipoBuscado.toUpperCase()}S`;
             renderizarDocumentos(tipoBuscado, "");
         } else {
             tituloArchivador.textContent = "Error de Escaneo";
-            contenedorLista.innerHTML = '<div class="empty-state">No se detectó el origen físico del archivador.</div>';
+            cajaContador.style.display = "none";
+            contenedorLista.innerHTML = '<div class="empty-state">No se detectó el origen físico del archivador. Por favor, escanee un QR válido de EsSalud.</div>';
         }
 
-        // Función para inyectar tarjetas HTML
+        // Función para inyectar tarjetas HTML optimizada
         function renderizarDocumentos(filtroTipo, filtroTexto) {
             contenedorLista.innerHTML = "";
             const documentosFiltrados = baseDocumentos.filter(doc => 
@@ -123,23 +142,29 @@
                 doc.codigo.toLowerCase().includes(filtroTexto.toLowerCase())
             );
 
+            // Actualizar contador
+            cajaContador.textContent = `Total expedientes físicos: ${documentosFiltrados.length}`;
+
             if (documentosFiltrados.length === 0) {
-                contenedorLista.innerHTML = '<div class="empty-state">No se encontraron expedientes bajo esta nomenclatura.</div>';
+                contenedorLista.innerHTML = '<div class="empty-state">No se encontraron expedientes con esa nomenclatura.</div>';
                 return;
             }
 
+            // Usamos un DocumentFragment para mejorar el rendimiento en celulares al renderizar
+            const fragmento = document.createDocumentFragment();
             documentosFiltrados.forEach(doc => {
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'document-card';
                 tarjeta.innerHTML = `
                     <span class="doc-code">${doc.codigo}</span>
-                    <span class="status-badge">Físico</span>
+                    <span class="status-badge">Custodia Física</span>
                 `;
-                contenedorLista.appendChild(tarjeta);
+                fragmento.appendChild(tarjeta);
             });
+            contenedorLista.appendChild(fragmento);
         }
 
-        // Función de filtro en tiempo real sin recargar página
+        // Función de filtro en tiempo real 
         function filtrarLista() {
             const textoBusqueda = document.getElementById('buscador').value;
             renderizarDocumentos(tipoBuscado, textoBusqueda);
