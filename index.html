@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGD Mobile+ | Inventario de Archivador</title>
+    <style>
+        :root {
+            --essalud-blue: #003366;
+            --essalud-cyan: #00A3E0;
+            --bg-light: #F4F7F6;
+            --text-dark: #333333;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-light);
+            margin: 0;
+            padding: 0;
+            color: var(--text-dark);
+        }
+        .header {
+            background-color: var(--essalud-blue);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { margin: 0; font-size: 1.5rem; }
+        .header p { margin: 5px 0 0 0; color: var(--essalud-cyan); font-weight: bold; }
+        .container {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .document-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 5px solid var(--essalud-cyan);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .doc-code { font-weight: bold; font-size: 1.1rem; }
+        .status-badge {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .empty-state { text-align: center; color: #777; margin-top: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>SGD Mobile+</h1>
+        <p id="titulo-archivador">Cargando archivador...</p>
+    </div>
+
+    <div class="container">
+        <input type="text" id="buscador" class="search-box" placeholder="Buscar expediente por código..." onkeyup="filtrarLista()">
+        
+        <div id="lista-documentos">
+            <!-- La lista inmediata se inyectará aquí -->
+        </div>
+    </div>
+
+    <script>
+        // 1. Base de datos consolidada (SSOT)
+        const baseDocumentos = [
+          {"codigo": "EXP-OFC-2020-001", "tipo": "Oficio"},
+          {"codigo": "EXP-OFC-2020-002", "tipo": "Oficio"},
+          {"codigo": "EXP-OFC-2020-003", "tipo": "Oficio"},
+          {"codigo": "EXP-CAR-2020-001", "tipo": "Carta"},
+          {"codigo": "EXP-CAR-2020-002", "tipo": "Carta"},
+          {"codigo": "EXP-CAR-2020-003", "tipo": "Carta"},
+          {"codigo": "EXP-NOT-2020-001", "tipo": "Nota"},
+          {"codigo": "EXP-NOT-2020-002", "tipo": "Nota"},
+          {"codigo": "EXP-NOT-2020-003", "tipo": "Nota"},
+          {"codigo": "EXP-MEM-2020-001", "tipo": "Memorando"},
+          {"codigo": "EXP-MEM-2020-002", "tipo": "Memorando"},
+          {"codigo": "EXP-MEM-2020-003", "tipo": "Memorando"},
+          {"codigo": "EXP-PRO-2020-001", "tipo": "Proveido"},
+          {"codigo": "EXP-PRO-2020-002", "tipo": "Proveido"},
+          {"codigo": "EXP-PRO-2020-003", "tipo": "Proveido"}
+        ];
+
+        // 2. Capturar el parámetro de la URL
+        const parametros = new URLSearchParams(window.location.search);
+        const tipoBuscado = parametros.get('tipo');
+
+        // 3. Renderizar la interfaz
+        const contenedorLista = document.getElementById('lista-documentos');
+        const tituloArchivador = document.getElementById('titulo-archivador');
+
+        if (tipoBuscado) {
+            tituloArchivador.textContent = `Archivador: ${tipoBuscado.toUpperCase()}S`;
+            renderizarDocumentos(tipoBuscado, "");
+        } else {
+            tituloArchivador.textContent = "Error de Escaneo";
+            contenedorLista.innerHTML = '<div class="empty-state">No se detectó el origen físico del archivador.</div>';
+        }
+
+        // Función para inyectar tarjetas HTML
+        function renderizarDocumentos(filtroTipo, filtroTexto) {
+            contenedorLista.innerHTML = "";
+            const documentosFiltrados = baseDocumentos.filter(doc => 
+                doc.tipo === filtroTipo && 
+                doc.codigo.toLowerCase().includes(filtroTexto.toLowerCase())
+            );
+
+            if (documentosFiltrados.length === 0) {
+                contenedorLista.innerHTML = '<div class="empty-state">No se encontraron expedientes bajo esta nomenclatura.</div>';
+                return;
+            }
+
+            documentosFiltrados.forEach(doc => {
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'document-card';
+                tarjeta.innerHTML = `
+                    <span class="doc-code">${doc.codigo}</span>
+                    <span class="status-badge">Físico</span>
+                `;
+                contenedorLista.appendChild(tarjeta);
+            });
+        }
+
+        // Función de filtro en tiempo real sin recargar página
+        function filtrarLista() {
+            const textoBusqueda = document.getElementById('buscador').value;
+            renderizarDocumentos(tipoBuscado, textoBusqueda);
+        }
+    </script>
+</body>
+</html>
